@@ -41,24 +41,44 @@ export const MissingOCMRoleAlertContent = ({
   </Alert>
 );
 
+type OCMRoleVerificationFailedAlertProps = {
+  onRefresh: () => void;
+  isRefreshPending?: boolean;
+};
+
+export const OCMRoleVerificationFailedAlert = ({
+  onRefresh,
+  isRefreshPending,
+}: OCMRoleVerificationFailedAlertProps) => (
+  <Alert variant="danger" isInline title="Unable to verify OCM role">
+    <Content className="pf-v6-u-font-size-sm">
+      <Content component={ContentVariants.p}>
+        The OCM Role configuration for the AWS account this cluster is deployed to could not be
+        verified.
+      </Content>
+      <Content component={ContentVariants.p} className="pf-v6-u-mt-sm">
+        After the issue is resolved, check again:
+        <Button
+          variant="link"
+          isInline
+          isDisabled={isRefreshPending}
+          onClick={onRefresh}
+          className="pf-v6-u-ml-sm"
+        >
+          Refresh OCM role
+        </Button>
+      </Content>
+    </Content>
+  </Alert>
+);
+
 type MissingOCMRoleAlertProps = {
   awsAccountId: string;
 };
 
 export const MissingOCMRoleAlert = ({ awsAccountId }: MissingOCMRoleAlertProps) => {
-  const { error, isPending, isFetching } = useFetchGetOCMRole(awsAccountId);
+  const { error } = useFetchGetOCMRole(awsAccountId);
   const [isRefreshPending, setIsRefreshPending] = React.useState(false);
-  const hadMissingRoleRef = React.useRef(false);
-
-  if (error?.errorCode === 404) {
-    hadMissingRoleRef.current = true;
-  } else if (!isPending && !isFetching) {
-    hadMissingRoleRef.current = false;
-  }
-
-  if (!hadMissingRoleRef.current) {
-    return null;
-  }
 
   const handleRefresh = async () => {
     setIsRefreshPending(true);
@@ -69,7 +89,20 @@ export const MissingOCMRoleAlert = ({ awsAccountId }: MissingOCMRoleAlertProps) 
     }
   };
 
-  return (
-    <MissingOCMRoleAlertContent onRefresh={handleRefresh} isRefreshPending={isRefreshPending} />
-  );
+  if (error?.errorCode === 404) {
+    return (
+      <MissingOCMRoleAlertContent onRefresh={handleRefresh} isRefreshPending={isRefreshPending} />
+    );
+  }
+
+  if (error) {
+    return (
+      <OCMRoleVerificationFailedAlert
+        onRefresh={handleRefresh}
+        isRefreshPending={isRefreshPending}
+      />
+    );
+  }
+
+  return null;
 };
